@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Package;
 use App\Company;
+use App\Customer;
 
 class PackagesController extends Controller
 {
@@ -110,16 +111,31 @@ class PackagesController extends Controller
        $vtc_response = $company_obj->validateTransportCompany($inputs['transport_company']);
        
        if($vtc_response['status'] == 1){
-            $inputs['transport_company_id'] = $vtc_response['id'];
-            $package_obj = new \App\Package;
-            $response = $package_obj->createPackage($inputs); 
-            if($response['status'] == true){
-                $request->session()->flash('message.level', 'success');
-                $request->session()->flash('message.content', 'Package created successfully.');
+            /**
+             * Validate customer exists or not
+             * If not exists add entry in customer table
+             * else update the package data
+             */
+            $c_obj = new Customer;
+            $c_resp = $c_obj->validateCustomer($inputs['consigner_name'], $inputs['consigner_mobile'],$inputs['consigner_gst_no']);
+            if($c_resp['status'] == 1){
+
+                $inputs['transport_company_id'] = $vtc_response['id'];
+                $package_obj = new \App\Package;
+                $response = $package_obj->createPackage($inputs); 
+                if($response['status'] == true){
+                    $request->session()->flash('message.level', 'success');
+                    $request->session()->flash('message.content', 'Package created successfully.');
+                }else{
+                    $request->session()->flash('message.level', 'danger');
+                    $request->session()->flash('message.content', 'Something went wrong while saving the information.');
+                }
+            
             }else{
                 $request->session()->flash('message.level', 'danger');
-                $request->session()->flash('message.content', 'Something went wrong while saving the information.');
+                $request->session()->flash('message.content', $c_resp['message']);
             }
+            
         }else{
             $request->session()->flash('message.level', 'danger');
             $request->session()->flash('message.content', 'Please select the transport company from the list.');
@@ -188,15 +204,28 @@ class PackagesController extends Controller
             $company_obj = new Company;
             $vtc_response = $company_obj->validateTransportCompany($inputs['transport_company']);
             if($vtc_response['status'] == 1){
-                $inputs['transport_company_id'] = $vtc_response['id'];
-                $p_obj = new \App\Package;
-                $response = $p_obj->updatePackage($inputs,$package_id);
-                if($response['status'] == true){
-                    $request->session()->flash('message.level', 'success');
-                    $request->session()->flash('message.content', 'Package updated successfully.');
+
+                /**
+                 * Validate customer exists or not
+                 * If not exists add entry in customer table
+                 * else update the package data
+                 */
+                $c_obj = new Customer;
+                $c_resp = $c_obj->validateCustomer($inputs['consigner_name'], $inputs['consigner_mobile'],$inputs['consigner_gst_no']);
+                if($c_resp['status'] == 1){
+                    $inputs['transport_company_id'] = $vtc_response['id'];
+                    $p_obj = new \App\Package;
+                    $response = $p_obj->updatePackage($inputs,$package_id);
+                    if($response['status'] == true){
+                        $request->session()->flash('message.level', 'success');
+                        $request->session()->flash('message.content', 'Package updated successfully.');
+                    }else{
+                        $request->session()->flash('message.level', 'danger');
+                        $request->session()->flash('message.content', 'Something went wrong while updating the information.');
+                    }
                 }else{
                     $request->session()->flash('message.level', 'danger');
-                    $request->session()->flash('message.content', 'Something went wrong while updating the information.');
+                    $request->session()->flash('message.content', $c_resp['message']);
                 }
             }else{
                 $request->session()->flash('message.level', 'danger');
